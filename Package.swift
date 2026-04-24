@@ -13,7 +13,17 @@ let package = Package(
         .executable(name: "audiomesh-receiver", targets: ["AudioMeshReceiver"])
     ],
     targets: [
-        .target(name: "AudioMeshCore"),
+        .systemLibrary(
+            name: "COpus",
+            pkgConfig: "opus",
+            providers: [
+                .brew(["opus"])
+            ]
+        ),
+        .target(
+            name: "AudioMeshCore",
+            dependencies: ["COpus"]
+        ),
         .executableTarget(
             name: "AudioMeshSource",
             dependencies: ["AudioMeshCore"]

@@ -1,0 +1,6 @@
+module COpus {
+    header "include/COpus.h"
+    link "opus"
+    export *
+}
+

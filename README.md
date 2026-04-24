@@ -18,13 +18,14 @@ The first implementation is a Swift Package with:
 
 - `AudioMeshCore`: packet format, 48 kHz stereo audio format, UDP transport, sine test source, and jitter buffer.
 - Bonjour/mDNS service advertising and discovery for `_audiomesh._udp.` streams.
-- Codec abstraction with `pcm-f32` passthrough as the first implemented codec.
+- Codec abstraction with `pcm-f32` passthrough and `opus` implemented.
 - `audiomesh-source`: sends a test tone as RTP-style UDP packets.
 - `audiomesh-receiver`: receives packets, jitter-buffers them, and plays audio with AVAudioEngine.
 
 Build and test:
 
 ```sh
+brew install opus
 swift build
 swift test
 ```
@@ -71,7 +72,12 @@ Bonjour discovery and receiver-requested unicast are working. Multicast packet d
 
 Receiver diagnostics include received, scheduled, missing, reordered/duplicate, invalid, skipped, queued, and packets-per-second counters.
 
-The only implemented codec is currently `pcm-f32`. The codec boundary is in place so Opus can be added without changing discovery, transport, capture, or playback flow.
+Supported codecs:
+
+- `pcm-f32`: uncompressed 48 kHz stereo Float32 PCM.
+- `opus`: compressed Opus frames using the local `libopus` system library.
+
+If Homebrew built `libopus` for a newer macOS SDK than the package deployment target, SwiftPM may print a linker warning during local builds. The current prototype still builds and tests successfully on this machine.
 
 ## MVP Focus
 

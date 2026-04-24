@@ -6,7 +6,7 @@ The repo now contains a runnable Swift Package prototype. It does not yet instal
 
 - Audio format: 48 kHz, stereo, Float32 PCM.
 - Packetization: RTP-style 12-byte header with dynamic payload type `96`.
-- Codec boundary: `AudioMeshEncoder` and `AudioMeshDecoder`, with `pcm-f32` passthrough implemented first.
+- Codec boundary: `AudioMeshEncoder` and `AudioMeshDecoder`, with `pcm-f32` passthrough and `opus` implemented.
 - Transport: UDP unicast.
 - Discovery: Bonjour/mDNS service advertising and discovery using `_audiomesh._udp.`.
 - Control: tiny TCP `START <udp-port>` request so a receiver can ask a discovered source to stream back by unicast.
@@ -23,6 +23,7 @@ The virtual audio driver is the riskiest native component, but it should not be 
 Build:
 
 ```sh
+brew install opus
 swift build
 ```
 
@@ -68,6 +69,13 @@ Print stream diagnostics more often:
 .build/debug/audiomesh-receiver --discover --no-audio --seconds 10 --stats-interval 50 --codec pcm-f32
 ```
 
+Use Opus:
+
+```sh
+.build/debug/audiomesh-source --advertise --name "Studio Mac" --port 5004 --control-port 5005 --codec opus
+.build/debug/audiomesh-receiver --discover --codec opus
+```
+
 Capture macOS system audio:
 
 ```sh
@@ -88,7 +96,7 @@ Bonjour discovery and receiver-requested unicast have been verified locally. Mul
 
 ## Near-Term Engineering Steps
 
-1. Add Opus encode/decode behind the codec abstraction.
-2. Improve packet loss, jitter, and latency metrics.
-3. Add an iOS receiver target that reuses the same protocol types.
-4. Start the macOS virtual output device spike.
+1. Improve packet loss, jitter, and latency metrics.
+2. Add an iOS receiver target that reuses the same protocol types.
+3. Start the macOS virtual output device spike.
+4. Add packaging notes for the Homebrew/system `libopus` dependency.

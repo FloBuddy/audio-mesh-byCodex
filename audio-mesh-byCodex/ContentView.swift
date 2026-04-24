@@ -33,15 +33,20 @@ struct ContentView: View {
                     commandBlock(".build/debug/audiomesh-receiver --discover")
                 }
 
+                Section("Opus Test") {
+                    commandBlock(".build/debug/audiomesh-source --advertise --name \"Studio Mac\" --port 5004 --control-port 5005 --codec opus")
+                    commandBlock(".build/debug/audiomesh-receiver --discover --codec opus")
+                }
+
                 Section("No-Audio Smoke Test") {
                     commandBlock(".build/debug/audiomesh-receiver --no-audio --port 5004")
                 }
 
                 Section("Next Implementation Steps") {
-                    Label("Opus implementation behind codec boundary", systemImage: "slider.horizontal.3")
                     Label("Stream metrics and diagnostics", systemImage: "chart.line.uptrend.xyaxis")
                     Label("iOS receiver target", systemImage: "iphone")
                     Label("Virtual output device spike", systemImage: "speaker.wave.3")
+                    Label("Packaging for libopus dependency", systemImage: "shippingbox")
                 }
             }
             .navigationTitle("Audio Mesh")

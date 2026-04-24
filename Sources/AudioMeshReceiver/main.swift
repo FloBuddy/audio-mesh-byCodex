@@ -183,7 +183,7 @@ if let selectedService,
 }
 
 let audioPlayer = options.playAudio ? try AudioPlayer(meshFormat: meshFormat) : nil
-let decoder = AudioMeshCodecFactory.makeDecoder(codecID: codecID)
+let decoder = try AudioMeshCodecFactory.makeDecoder(codecID: codecID, format: meshFormat)
 let expectedEncodedPayloadByteCount = codecID == .pcmFloat32 ? meshFormat.payloadByteCount : nil
 var jitterBuffer = JitterBuffer(prebufferPacketCount: options.prebufferPackets)
 var sequenceMetrics = PacketSequenceMetrics()

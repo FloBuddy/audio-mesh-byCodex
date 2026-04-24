@@ -177,7 +177,7 @@ var timestamp: UInt32 = 0
 var cachedDestination: (host: String, port: UInt16)?
 var cachedSender: UDPSender?
 var payloadSource = try await makePayloadSource(options: options, format: format)
-let encoder = AudioMeshCodecFactory.makeEncoder(codecID: options.codecID)
+let encoder = try AudioMeshCodecFactory.makeEncoder(codecID: options.codecID, format: format)
 
 controlServer?.start()
 advertiser?.start()

@@ -25,6 +25,19 @@ final class AudioCodecTests: XCTestCase {
 
     func testCodecFactoryParsesKnownCodec() throws {
         XCTAssertEqual(try AudioMeshCodecFactory.parse("pcm-f32"), .pcmFloat32)
+        XCTAssertEqual(try AudioMeshCodecFactory.parse("opus"), .opus)
+    }
+
+    func testOpusCodecRoundTripsPayloadShape() throws {
+        let format = AudioMeshFormat()
+        let encoder = try OpusEncoder(format: format)
+        let decoder = try OpusDecoder(format: format)
+        let payload = Data(repeating: 0, count: format.payloadByteCount)
+
+        let encoded = try encoder.encode(pcmPayload: payload)
+        let decoded = try decoder.decode(encodedPayload: encoded)
+
+        XCTAssertLessThan(encoded.count, payload.count)
+        XCTAssertEqual(decoded.count, payload.count)
     }
 }
-
