@@ -9,7 +9,7 @@ The repo now contains a runnable Swift Package prototype. It does not yet captur
 - Transport: UDP unicast.
 - Discovery: Bonjour/mDNS service advertising and discovery using `_audiomesh._udp.`.
 - Control: tiny TCP `START <udp-port>` request so a receiver can ask a discovered source to stream back by unicast.
-- Source: generated sine wave test tone.
+- Source: generated sine wave test tone or ScreenCaptureKit system-audio capture.
 - Receiver: UDP receive loop, jitter buffer, AVAudioEngine playback.
 
 ## Why Start Here
@@ -59,6 +59,15 @@ Discover sources:
 ```sh
 .build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio
 ```
+
+Capture macOS system audio:
+
+```sh
+.build/debug/audiomesh-source --advertise --name "Studio Mac" --port 5004 --control-port 5005 --screen-audio
+.build/debug/audiomesh-receiver --discover
+```
+
+The `--screen-audio` mode uses ScreenCaptureKit and may require Screen Recording permission for Terminal, Xcode, or the launching host process. It is a prototype capture path, not the final virtual output device.
 
 Experimental multicast discovery and receive:
 

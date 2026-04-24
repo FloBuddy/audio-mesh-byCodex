@@ -11,6 +11,12 @@ struct SourceOptions {
     var name = Host.current().localizedName ?? "Audio Mesh Source"
     var multicast = false
     var multicastGroup = AudioMeshService.defaultMulticastGroup
+    var captureMode = CaptureMode.tone
+}
+
+enum CaptureMode {
+    case tone
+    case screenAudio
 }
 
 func parseOptions() -> SourceOptions {
@@ -56,13 +62,16 @@ func parseOptions() -> SourceOptions {
                     options.host = value
                 }
             }
+        case "--screen-audio":
+            options.captureMode = .screenAudio
         case "--help", "-h":
             print("""
             Usage: audiomesh-source [--host 127.0.0.1] [--port 5004] [--frequency 440] [--seconds 10]
                                     [--advertise] [--name "Studio Mac"] [--control-port 5005]
-                                    [--multicast] [--group 239.255.42.99]
+                                    [--multicast] [--group 239.255.42.99] [--screen-audio]
 
             Sends a 48 kHz stereo Float32 test tone using Audio Mesh RTP-style UDP packets.
+            With --screen-audio, captures macOS system audio through ScreenCaptureKit.
             When --advertise is used without --multicast, receivers can request unicast via the control port.
             """)
             exit(0)
@@ -95,6 +104,39 @@ final class DestinationStore {
     }
 }
 
+protocol PayloadSource {
+    mutating func nextPayload() -> Data?
+}
+
+struct TonePayloadSource: PayloadSource {
+    private var source: SineWaveSource
+
+    init(format: AudioMeshFormat, frequency: Double) {
+        source = SineWaveSource(format: format, frequency: frequency)
+    }
+
+    mutating func nextPayload() -> Data? {
+        source.nextPayload()
+    }
+}
+
+@available(macOS 13.0, *)
+struct ScreenAudioPayloadSource: PayloadSource {
+    private let source: ScreenAudioCaptureSource
+
+    init(format: AudioMeshFormat) async throws {
+        source = ScreenAudioCaptureSource(format: format)
+        try await source.start()
+    }
+
+    mutating func nextPayload() -> Data? {
+        source.nextPayload()
+    }
+}
+
+@main
+struct AudioMeshSourceCommand {
+    static func main() async throws {
 let options = parseOptions()
 let format = AudioMeshFormat()
 let destinationStore = DestinationStore(
@@ -116,33 +158,44 @@ let advertiser = options.advertise
         controlPort: options.multicast ? nil : options.controlPort
     )
     : nil
-var tone = SineWaveSource(format: format, frequency: options.frequency)
 let ssrc = UInt32.random(in: 1...UInt32.max)
 let started = Date()
 var sequenceNumber: UInt16 = 0
 var timestamp: UInt32 = 0
 var cachedDestination: (host: String, port: UInt16)?
 var cachedSender: UDPSender?
+var payloadSource = try await makePayloadSource(options: options, format: format)
 
 controlServer?.start()
 advertiser?.start()
 if options.advertise && !options.multicast {
     print("Audio Mesh source waiting for receiver requests on TCP port \(options.controlPort)")
 } else {
-    print("Audio Mesh source sending \(options.frequency) Hz tone to \(options.host):\(options.port)")
+    switch options.captureMode {
+    case .tone:
+        print("Audio Mesh source sending \(options.frequency) Hz tone to \(options.host):\(options.port)")
+    case .screenAudio:
+        print("Audio Mesh source sending captured system audio to \(options.host):\(options.port)")
+    }
+}
+if options.captureMode == .screenAudio {
+    print("Capture mode: ScreenCaptureKit system audio")
 }
 if options.advertise {
     print("Advertising source as \"\(options.name)\"")
 }
 
 while true {
-    RunLoop.current.run(mode: .default, before: Date())
+    pumpRunLoop()
 
     if let seconds = options.seconds, Date().timeIntervalSince(started) >= seconds {
         break
     }
 
-    let payload = tone.nextPayload()
+    guard let payload = payloadSource.nextPayload() else {
+        break
+    }
+
     let packet = AudioMeshPacket(
         sequenceNumber: sequenceNumber,
         timestamp: timestamp,
@@ -166,9 +219,32 @@ while true {
 
     sequenceNumber &+= 1
     timestamp &+= UInt32(format.framesPerPacket)
-    Thread.sleep(forTimeInterval: format.packetDurationSeconds)
+    try await Task.sleep(nanoseconds: UInt64(format.packetDurationSeconds * 1_000_000_000))
 }
 
 advertiser?.stop()
 controlServer?.stop()
 print("Audio Mesh source stopped")
+    }
+
+    private static func makePayloadSource(options: SourceOptions, format: AudioMeshFormat) async throws -> any PayloadSource {
+        switch options.captureMode {
+        case .tone:
+            return TonePayloadSource(format: format, frequency: options.frequency)
+        case .screenAudio:
+            if #available(macOS 13.0, *) {
+                return try await ScreenAudioPayloadSource(format: format)
+            } else {
+                throw SourceError.screenAudioRequiresMacOS13
+            }
+        }
+    }
+}
+
+private func pumpRunLoop() {
+    RunLoop.current.run(mode: .default, before: Date())
+}
+
+enum SourceError: Error {
+    case screenAudioRequiresMacOS13
+}

@@ -50,6 +50,15 @@ Advertise and discover a stream:
 
 In this mode the receiver discovers the source, sends `START <udp-port>` to the source control port, and the source streams unicast UDP back to the receiver.
 
+Capture Mac system audio instead of the generated test tone:
+
+```sh
+.build/debug/audiomesh-source --advertise --name "Studio Mac" --port 5004 --control-port 5005 --screen-audio
+.build/debug/audiomesh-receiver --discover
+```
+
+The first run of `--screen-audio` may require macOS Screen Recording permission for the terminal app or Xcode, depending on where you launch it.
+
 Experimental multicast mode:
 
 ```sh

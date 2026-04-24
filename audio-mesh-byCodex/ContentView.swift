@@ -28,15 +28,20 @@ struct ContentView: View {
                     commandBlock(".build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio")
                 }
 
+                Section("System Audio Capture") {
+                    commandBlock(".build/debug/audiomesh-source --advertise --name \"Studio Mac\" --port 5004 --control-port 5005 --screen-audio")
+                    commandBlock(".build/debug/audiomesh-receiver --discover")
+                }
+
                 Section("No-Audio Smoke Test") {
                     commandBlock(".build/debug/audiomesh-receiver --no-audio --port 5004")
                 }
 
                 Section("Next Implementation Steps") {
-                    Label("macOS audio capture prototype", systemImage: "waveform")
                     Label("Opus codec integration", systemImage: "slider.horizontal.3")
                     Label("Stream metrics and diagnostics", systemImage: "chart.line.uptrend.xyaxis")
                     Label("iOS receiver target", systemImage: "iphone")
+                    Label("Virtual output device spike", systemImage: "speaker.wave.3")
                 }
             }
             .navigationTitle("Audio Mesh")
