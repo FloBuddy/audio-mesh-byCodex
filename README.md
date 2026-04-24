@@ -18,6 +18,7 @@ The first implementation is a Swift Package with:
 
 - `AudioMeshCore`: packet format, 48 kHz stereo audio format, UDP transport, sine test source, and jitter buffer.
 - Bonjour/mDNS service advertising and discovery for `_audiomesh._udp.` streams.
+- Codec abstraction with `pcm-f32` passthrough as the first implemented codec.
 - `audiomesh-source`: sends a test tone as RTP-style UDP packets.
 - `audiomesh-receiver`: receives packets, jitter-buffers them, and plays audio with AVAudioEngine.
 
@@ -45,7 +46,7 @@ Advertise and discover a stream:
 
 ```sh
 .build/debug/audiomesh-source --advertise --name "Studio Mac" --port 5004 --control-port 5005
-.build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio --seconds 10 --stats-interval 50
+.build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio --seconds 10 --stats-interval 50 --codec pcm-f32
 ```
 
 In this mode the receiver discovers the source, sends `START <udp-port>` to the source control port, and the source streams unicast UDP back to the receiver.
@@ -69,6 +70,8 @@ Experimental multicast mode:
 Bonjour discovery and receiver-requested unicast are working. Multicast packet delivery still needs more real-network testing; unicast is the reliable audio path for local development.
 
 Receiver diagnostics include received, scheduled, missing, reordered/duplicate, invalid, skipped, queued, and packets-per-second counters.
+
+The only implemented codec is currently `pcm-f32`. The codec boundary is in place so Opus can be added without changing discovery, transport, capture, or playback flow.
 
 ## MVP Focus
 

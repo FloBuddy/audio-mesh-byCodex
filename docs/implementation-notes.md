@@ -2,10 +2,11 @@
 
 ## Current State
 
-The repo now contains a runnable Swift Package prototype. It does not yet capture system audio or install a virtual audio driver. It validates the first shared layer:
+The repo now contains a runnable Swift Package prototype. It does not yet install a virtual audio driver. It validates the first shared layer:
 
 - Audio format: 48 kHz, stereo, Float32 PCM.
 - Packetization: RTP-style 12-byte header with dynamic payload type `96`.
+- Codec boundary: `AudioMeshEncoder` and `AudioMeshDecoder`, with `pcm-f32` passthrough implemented first.
 - Transport: UDP unicast.
 - Discovery: Bonjour/mDNS service advertising and discovery using `_audiomesh._udp.`.
 - Control: tiny TCP `START <udp-port>` request so a receiver can ask a discovered source to stream back by unicast.
@@ -64,7 +65,7 @@ Discover sources:
 Print stream diagnostics more often:
 
 ```sh
-.build/debug/audiomesh-receiver --discover --no-audio --seconds 10 --stats-interval 50
+.build/debug/audiomesh-receiver --discover --no-audio --seconds 10 --stats-interval 50 --codec pcm-f32
 ```
 
 Capture macOS system audio:
@@ -87,8 +88,7 @@ Bonjour discovery and receiver-requested unicast have been verified locally. Mul
 
 ## Near-Term Engineering Steps
 
-1. Replace test tone source with macOS audio capture prototype.
-2. Add Opus encode/decode behind a codec abstraction.
-3. Add packet loss, jitter, and latency metrics.
-4. Add an iOS receiver target that reuses the same protocol types.
-5. Start the macOS virtual output device spike.
+1. Add Opus encode/decode behind the codec abstraction.
+2. Improve packet loss, jitter, and latency metrics.
+3. Add an iOS receiver target that reuses the same protocol types.
+4. Start the macOS virtual output device spike.

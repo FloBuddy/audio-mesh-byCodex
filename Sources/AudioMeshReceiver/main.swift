@@ -11,6 +11,7 @@ struct ReceiverOptions {
     var multicastGroup: String?
     var seconds: Double?
     var statsInterval = 100
+    var codecID: AudioMeshCodecID?
 }
 
 func parseOptions() -> ReceiverOptions {
@@ -47,11 +48,21 @@ func parseOptions() -> ReceiverOptions {
             if let value = iterator.next(), let interval = Int(value) {
                 options.statsInterval = max(1, interval)
             }
+        case "--codec":
+            if let value = iterator.next() {
+                do {
+                    options.codecID = try AudioMeshCodecFactory.parse(value)
+                } catch {
+                    print("Unsupported codec \"\(value)\". Supported: \(AudioMeshCodecID.allCases.map(\.rawValue).joined(separator: ", "))")
+                    exit(2)
+                }
+            }
         case "--help", "-h":
             print("""
             Usage: audiomesh-receiver [--port 5004] [--prebuffer 8] [--no-audio]
                                       [--discover] [--discovery-timeout 3] [--group 239.255.42.99]
                                       [--seconds 10] [--stats-interval 100]
+                                      [--codec pcm-f32]
 
             Receives Audio Mesh RTP-style UDP packets and plays 48 kHz stereo Float32 audio.
             """)
@@ -122,6 +133,7 @@ let meshFormat = AudioMeshFormat()
 var listenPort = options.port
 var multicastGroup = options.multicastGroup
 var selectedService: AudioMeshService?
+var codecID = options.codecID ?? .pcmFloat32
 
 if options.discover {
     print("Searching for Audio Mesh sources...")
@@ -133,12 +145,13 @@ if options.discover {
         print("Found Audio Mesh sources:")
         for service in services {
             let groupDescription = service.group.map { " group=\($0)" } ?? ""
-            print("- \(service.name) transport=\(service.transport) port=\(service.port)\(groupDescription)")
+            print("- \(service.name) transport=\(service.transport) codec=\(service.codecID.rawValue) port=\(service.port)\(groupDescription)")
         }
 
         if let selected = services.first {
             selectedService = selected
             listenPort = selected.port
+            codecID = options.codecID ?? selected.codecID
             if selected.transport == "multicast" {
                 multicastGroup = selected.group
             }
@@ -170,6 +183,8 @@ if let selectedService,
 }
 
 let audioPlayer = options.playAudio ? try AudioPlayer(meshFormat: meshFormat) : nil
+let decoder = AudioMeshCodecFactory.makeDecoder(codecID: codecID)
+let expectedEncodedPayloadByteCount = codecID == .pcmFloat32 ? meshFormat.payloadByteCount : nil
 var jitterBuffer = JitterBuffer(prebufferPacketCount: options.prebufferPackets)
 var sequenceMetrics = PacketSequenceMetrics()
 var scheduled = 0
@@ -181,6 +196,7 @@ if let multicastGroup {
 } else {
     print("Audio Mesh receiver listening on UDP port \(listenPort)")
 }
+print("Codec: \(codecID.rawValue)")
 
 while true {
     if let seconds = options.seconds, Date().timeIntervalSince(started) >= seconds {
@@ -195,13 +211,14 @@ while true {
     }
 
     do {
-        let packet = try AudioMeshPacket.decode(data, expectedPayloadBytes: meshFormat.payloadByteCount)
+        let packet = try AudioMeshPacket.decode(data, expectedPayloadBytes: expectedEncodedPayloadByteCount)
         sequenceMetrics.observe(sequenceNumber: packet.sequenceNumber)
         jitterBuffer.push(packet)
 
         while let ready = jitterBuffer.popReady() {
             scheduled += 1
-            audioPlayer?.schedule(payload: ready.payload, meshFormat: meshFormat)
+            let pcmPayload = try decoder.decode(encodedPayload: ready.payload)
+            audioPlayer?.schedule(payload: pcmPayload, meshFormat: meshFormat)
         }
 
         if sequenceMetrics.receivedPacketCount % options.statsInterval == 0 {

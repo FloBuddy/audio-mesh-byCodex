@@ -12,6 +12,7 @@ public struct AudioMeshService: Sendable, Equatable {
     public let sampleRate: Int
     public let channels: Int
     public let controlPort: UInt16?
+    public let codecID: AudioMeshCodecID
 
     public init(
         name: String,
@@ -21,7 +22,8 @@ public struct AudioMeshService: Sendable, Equatable {
         group: String?,
         sampleRate: Int,
         channels: Int,
-        controlPort: UInt16?
+        controlPort: UInt16?,
+        codecID: AudioMeshCodecID
     ) {
         self.name = name
         self.hostName = hostName
@@ -31,6 +33,7 @@ public struct AudioMeshService: Sendable, Equatable {
         self.sampleRate = sampleRate
         self.channels = channels
         self.controlPort = controlPort
+        self.codecID = codecID
     }
 }
 
@@ -43,7 +46,8 @@ public final class AudioMeshServiceAdvertiser: NSObject, NetServiceDelegate {
         format: AudioMeshFormat,
         transport: String,
         group: String?,
-        controlPort: UInt16? = nil
+        controlPort: UInt16? = nil,
+        codecID: AudioMeshCodecID = .pcmFloat32
     ) {
         service = NetService(
             domain: "local.",
@@ -55,6 +59,7 @@ public final class AudioMeshServiceAdvertiser: NSObject, NetServiceDelegate {
         var txt: [String: Data] = [
             "version": Data("1".utf8),
             "transport": Data(transport.utf8),
+            "codec": Data(codecID.rawValue.utf8),
             "sampleRate": Data(String(format.sampleRate).utf8),
             "channels": Data(String(format.channels).utf8),
             "framesPerPacket": Data(String(format.framesPerPacket).utf8)
@@ -123,6 +128,9 @@ public final class AudioMeshServiceBrowser: NSObject, NetServiceBrowserDelegate,
         let sampleRate = txt.intValue(for: "sampleRate") ?? AudioMeshFormat().sampleRate
         let channels = txt.intValue(for: "channels") ?? AudioMeshFormat().channels
         let controlPort = txt.intValue(for: "controlPort").flatMap(UInt16.init)
+        let codecID = txt.stringValue(for: "codec")
+            .flatMap { try? AudioMeshCodecFactory.parse($0) }
+            ?? .pcmFloat32
 
         let service = AudioMeshService(
             name: sender.name,
@@ -132,7 +140,8 @@ public final class AudioMeshServiceBrowser: NSObject, NetServiceBrowserDelegate,
             group: group,
             sampleRate: sampleRate,
             channels: channels,
-            controlPort: controlPort
+            controlPort: controlPort,
+            codecID: codecID
         )
 
         if !resolved.contains(service) {

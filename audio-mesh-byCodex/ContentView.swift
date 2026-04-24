@@ -25,7 +25,7 @@ struct ContentView: View {
 
                 Section("Discovery Test") {
                     commandBlock(".build/debug/audiomesh-source --advertise --name \"Studio Mac\" --port 5004 --control-port 5005")
-                    commandBlock(".build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio --seconds 10 --stats-interval 50")
+                    commandBlock(".build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio --seconds 10 --stats-interval 50 --codec pcm-f32")
                 }
 
                 Section("System Audio Capture") {
@@ -38,7 +38,7 @@ struct ContentView: View {
                 }
 
                 Section("Next Implementation Steps") {
-                    Label("Opus codec integration", systemImage: "slider.horizontal.3")
+                    Label("Opus implementation behind codec boundary", systemImage: "slider.horizontal.3")
                     Label("Stream metrics and diagnostics", systemImage: "chart.line.uptrend.xyaxis")
                     Label("iOS receiver target", systemImage: "iphone")
                     Label("Virtual output device spike", systemImage: "speaker.wave.3")

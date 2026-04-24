@@ -12,6 +12,7 @@ struct SourceOptions {
     var multicast = false
     var multicastGroup = AudioMeshService.defaultMulticastGroup
     var captureMode = CaptureMode.tone
+    var codecID = AudioMeshCodecID.pcmFloat32
 }
 
 enum CaptureMode {
@@ -64,11 +65,21 @@ func parseOptions() -> SourceOptions {
             }
         case "--screen-audio":
             options.captureMode = .screenAudio
+        case "--codec":
+            if let value = iterator.next() {
+                do {
+                    options.codecID = try AudioMeshCodecFactory.parse(value)
+                } catch {
+                    print("Unsupported codec \"\(value)\". Supported: \(AudioMeshCodecID.allCases.map(\.rawValue).joined(separator: ", "))")
+                    exit(2)
+                }
+            }
         case "--help", "-h":
             print("""
             Usage: audiomesh-source [--host 127.0.0.1] [--port 5004] [--frequency 440] [--seconds 10]
                                     [--advertise] [--name "Studio Mac"] [--control-port 5005]
                                     [--multicast] [--group 239.255.42.99] [--screen-audio]
+                                    [--codec pcm-f32]
 
             Sends a 48 kHz stereo Float32 test tone using Audio Mesh RTP-style UDP packets.
             With --screen-audio, captures macOS system audio through ScreenCaptureKit.
@@ -155,7 +166,8 @@ let advertiser = options.advertise
         format: format,
         transport: options.multicast ? "multicast" : "unicast",
         group: options.multicast ? options.multicastGroup : nil,
-        controlPort: options.multicast ? nil : options.controlPort
+        controlPort: options.multicast ? nil : options.controlPort,
+        codecID: options.codecID
     )
     : nil
 let ssrc = UInt32.random(in: 1...UInt32.max)
@@ -165,6 +177,7 @@ var timestamp: UInt32 = 0
 var cachedDestination: (host: String, port: UInt16)?
 var cachedSender: UDPSender?
 var payloadSource = try await makePayloadSource(options: options, format: format)
+let encoder = AudioMeshCodecFactory.makeEncoder(codecID: options.codecID)
 
 controlServer?.start()
 advertiser?.start()
@@ -181,6 +194,7 @@ if options.advertise && !options.multicast {
 if options.captureMode == .screenAudio {
     print("Capture mode: ScreenCaptureKit system audio")
 }
+print("Codec: \(options.codecID.rawValue)")
 if options.advertise {
     print("Advertising source as \"\(options.name)\"")
 }
@@ -192,9 +206,10 @@ while true {
         break
     }
 
-    guard let payload = payloadSource.nextPayload() else {
+    guard let pcmPayload = payloadSource.nextPayload() else {
         break
     }
+    let payload = try encoder.encode(pcmPayload: pcmPayload)
 
     let packet = AudioMeshPacket(
         sequenceNumber: sequenceNumber,
