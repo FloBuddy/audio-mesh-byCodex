@@ -110,6 +110,7 @@ let options = parseOptions()
 let meshFormat = AudioMeshFormat()
 var listenPort = options.port
 var multicastGroup = options.multicastGroup
+var selectedService: AudioMeshService?
 
 if options.discover {
     print("Searching for Audio Mesh sources...")
@@ -125,6 +126,7 @@ if options.discover {
         }
 
         if let selected = services.first {
+            selectedService = selected
             listenPort = selected.port
             if selected.transport == "multicast" {
                 multicastGroup = selected.group
@@ -135,6 +137,23 @@ if options.discover {
 }
 
 let receiver = try UDPReceiver(port: listenPort, multicastGroup: multicastGroup)
+
+if let selectedService,
+   selectedService.transport == "unicast",
+   let hostName = selectedService.hostName,
+   let controlPort = selectedService.controlPort {
+    do {
+        try AudioMeshControlClient().requestStart(
+            host: hostName,
+            controlPort: controlPort,
+            audioPort: listenPort
+        )
+        print("Requested unicast stream from \(selectedService.name) via \(hostName):\(controlPort)")
+    } catch {
+        print("Could not request unicast stream: \(error)")
+    }
+}
+
 let audioPlayer = options.playAudio ? try AudioPlayer(meshFormat: meshFormat) : nil
 var jitterBuffer = JitterBuffer(prebufferPacketCount: options.prebufferPackets)
 var received = 0

@@ -24,7 +24,7 @@ struct ContentView: View {
                 }
 
                 Section("Discovery Test") {
-                    commandBlock(".build/debug/audiomesh-source --advertise --name \"Studio Mac\" --host 127.0.0.1 --port 5004")
+                    commandBlock(".build/debug/audiomesh-source --advertise --name \"Studio Mac\" --port 5004 --control-port 5005")
                     commandBlock(".build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio")
                 }
 
@@ -33,9 +33,9 @@ struct ContentView: View {
                 }
 
                 Section("Next Implementation Steps") {
-                    Label("Receiver-to-source unicast control", systemImage: "arrow.left.arrow.right")
                     Label("macOS audio capture prototype", systemImage: "waveform")
                     Label("Opus codec integration", systemImage: "slider.horizontal.3")
+                    Label("Stream metrics and diagnostics", systemImage: "chart.line.uptrend.xyaxis")
                     Label("iOS receiver target", systemImage: "iphone")
                 }
             }

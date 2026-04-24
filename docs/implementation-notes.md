@@ -8,6 +8,7 @@ The repo now contains a runnable Swift Package prototype. It does not yet captur
 - Packetization: RTP-style 12-byte header with dynamic payload type `96`.
 - Transport: UDP unicast.
 - Discovery: Bonjour/mDNS service advertising and discovery using `_audiomesh._udp.`.
+- Control: tiny TCP `START <udp-port>` request so a receiver can ask a discovered source to stream back by unicast.
 - Source: generated sine wave test tone.
 - Receiver: UDP receive loop, jitter buffer, AVAudioEngine playback.
 
@@ -50,7 +51,7 @@ Run receiver without playback:
 Advertise source:
 
 ```sh
-.build/debug/audiomesh-source --advertise --name "Studio Mac" --host 127.0.0.1 --port 5004
+.build/debug/audiomesh-source --advertise --name "Studio Mac" --port 5004 --control-port 5005
 ```
 
 Discover sources:
@@ -66,13 +67,12 @@ Experimental multicast discovery and receive:
 .build/debug/audiomesh-receiver --discover
 ```
 
-Bonjour discovery has been verified locally. Multicast packet delivery did not complete in the local sandbox, so the next practical step is a source control endpoint that lets a discovered receiver request unicast streaming to its own IP/port.
+Bonjour discovery and receiver-requested unicast have been verified locally. Multicast packet delivery did not complete in the local sandbox, so multicast remains experimental.
 
 ## Near-Term Engineering Steps
 
-1. Add a simple control endpoint so receivers can request unicast streaming after discovery.
-2. Replace test tone source with macOS audio capture prototype.
-3. Add Opus encode/decode behind a codec abstraction.
-4. Add packet loss, jitter, and latency metrics.
-5. Add an iOS receiver target that reuses the same protocol types.
-6. Start the macOS virtual output device spike.
+1. Replace test tone source with macOS audio capture prototype.
+2. Add Opus encode/decode behind a codec abstraction.
+3. Add packet loss, jitter, and latency metrics.
+4. Add an iOS receiver target that reuses the same protocol types.
+5. Start the macOS virtual output device spike.

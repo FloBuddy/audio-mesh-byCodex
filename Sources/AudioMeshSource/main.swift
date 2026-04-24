@@ -4,6 +4,7 @@ import Foundation
 struct SourceOptions {
     var host = "127.0.0.1"
     var port: UInt16 = 5004
+    var controlPort: UInt16 = 5005
     var frequency = 440.0
     var seconds: Double?
     var advertise = false
@@ -25,6 +26,10 @@ func parseOptions() -> SourceOptions {
         case "--port":
             if let value = iterator.next(), let port = UInt16(value) {
                 options.port = port
+            }
+        case "--control-port":
+            if let value = iterator.next(), let port = UInt16(value) {
+                options.controlPort = port
             }
         case "--frequency":
             if let value = iterator.next(), let frequency = Double(value) {
@@ -54,9 +59,11 @@ func parseOptions() -> SourceOptions {
         case "--help", "-h":
             print("""
             Usage: audiomesh-source [--host 127.0.0.1] [--port 5004] [--frequency 440] [--seconds 10]
-                                    [--advertise] [--name "Studio Mac"] [--multicast] [--group 239.255.42.99]
+                                    [--advertise] [--name "Studio Mac"] [--control-port 5005]
+                                    [--multicast] [--group 239.255.42.99]
 
             Sends a 48 kHz stereo Float32 test tone using Audio Mesh RTP-style UDP packets.
+            When --advertise is used without --multicast, receivers can request unicast via the control port.
             """)
             exit(0)
         default:
@@ -67,16 +74,46 @@ func parseOptions() -> SourceOptions {
     return options
 }
 
+final class DestinationStore {
+    private let lock = NSLock()
+    private var destination: (host: String, port: UInt16)?
+
+    init(initial: (host: String, port: UInt16)?) {
+        destination = initial
+    }
+
+    func set(host: String, port: UInt16) {
+        lock.lock()
+        destination = (host, port)
+        lock.unlock()
+    }
+
+    func get() -> (host: String, port: UInt16)? {
+        lock.lock()
+        defer { lock.unlock() }
+        return destination
+    }
+}
+
 let options = parseOptions()
 let format = AudioMeshFormat()
-let sender = try UDPSender(host: options.host, port: options.port, multicastTTL: options.multicast ? 1 : nil)
+let destinationStore = DestinationStore(
+    initial: options.advertise && !options.multicast ? nil : (options.host, options.port)
+)
+let controlServer = options.advertise && !options.multicast
+    ? try AudioMeshControlServer(port: options.controlPort) { host, port in
+        destinationStore.set(host: host, port: port)
+        print("Receiver requested unicast stream: \(host):\(port)")
+    }
+    : nil
 let advertiser = options.advertise
     ? AudioMeshServiceAdvertiser(
         name: options.name,
         port: options.port,
         format: format,
         transport: options.multicast ? "multicast" : "unicast",
-        group: options.multicast ? options.multicastGroup : nil
+        group: options.multicast ? options.multicastGroup : nil,
+        controlPort: options.multicast ? nil : options.controlPort
     )
     : nil
 var tone = SineWaveSource(format: format, frequency: options.frequency)
@@ -84,9 +121,16 @@ let ssrc = UInt32.random(in: 1...UInt32.max)
 let started = Date()
 var sequenceNumber: UInt16 = 0
 var timestamp: UInt32 = 0
+var cachedDestination: (host: String, port: UInt16)?
+var cachedSender: UDPSender?
 
+controlServer?.start()
 advertiser?.start()
-print("Audio Mesh source sending \(options.frequency) Hz tone to \(options.host):\(options.port)")
+if options.advertise && !options.multicast {
+    print("Audio Mesh source waiting for receiver requests on TCP port \(options.controlPort)")
+} else {
+    print("Audio Mesh source sending \(options.frequency) Hz tone to \(options.host):\(options.port)")
+}
 if options.advertise {
     print("Advertising source as \"\(options.name)\"")
 }
@@ -106,11 +150,25 @@ while true {
         payload: payload
     )
 
-    try sender.send(packet.encode())
+    if let destination = destinationStore.get() {
+        if cachedDestination?.host != destination.host || cachedDestination?.port != destination.port {
+            cachedSender = try UDPSender(
+                host: destination.host,
+                port: destination.port,
+                multicastTTL: options.multicast ? 1 : nil
+            )
+            cachedDestination = destination
+            print("Streaming to \(destination.host):\(destination.port)")
+        }
+
+        try cachedSender?.send(packet.encode())
+    }
+
     sequenceNumber &+= 1
     timestamp &+= UInt32(format.framesPerPacket)
     Thread.sleep(forTimeInterval: format.packetDurationSeconds)
 }
 
 advertiser?.stop()
+controlServer?.stop()
 print("Audio Mesh source stopped")

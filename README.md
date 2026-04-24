@@ -44,9 +44,11 @@ For packet/transport testing without speaker output:
 Advertise and discover a stream:
 
 ```sh
-.build/debug/audiomesh-source --advertise --name "Studio Mac" --host 127.0.0.1 --port 5004
+.build/debug/audiomesh-source --advertise --name "Studio Mac" --port 5004 --control-port 5005
 .build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio
 ```
+
+In this mode the receiver discovers the source, sends `START <udp-port>` to the source control port, and the source streams unicast UDP back to the receiver.
 
 Experimental multicast mode:
 
@@ -55,7 +57,7 @@ Experimental multicast mode:
 .build/debug/audiomesh-receiver --discover
 ```
 
-Bonjour discovery is working. Multicast packet delivery still needs more real-network testing; unicast remains the reliable audio path for local development.
+Bonjour discovery and receiver-requested unicast are working. Multicast packet delivery still needs more real-network testing; unicast is the reliable audio path for local development.
 
 ## MVP Focus
 

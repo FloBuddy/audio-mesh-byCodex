@@ -11,6 +11,7 @@ public struct AudioMeshService: Sendable, Equatable {
     public let group: String?
     public let sampleRate: Int
     public let channels: Int
+    public let controlPort: UInt16?
 
     public init(
         name: String,
@@ -19,7 +20,8 @@ public struct AudioMeshService: Sendable, Equatable {
         transport: String,
         group: String?,
         sampleRate: Int,
-        channels: Int
+        channels: Int,
+        controlPort: UInt16?
     ) {
         self.name = name
         self.hostName = hostName
@@ -28,6 +30,7 @@ public struct AudioMeshService: Sendable, Equatable {
         self.group = group
         self.sampleRate = sampleRate
         self.channels = channels
+        self.controlPort = controlPort
     }
 }
 
@@ -39,7 +42,8 @@ public final class AudioMeshServiceAdvertiser: NSObject, NetServiceDelegate {
         port: UInt16,
         format: AudioMeshFormat,
         transport: String,
-        group: String?
+        group: String?,
+        controlPort: UInt16? = nil
     ) {
         service = NetService(
             domain: "local.",
@@ -58,6 +62,10 @@ public final class AudioMeshServiceAdvertiser: NSObject, NetServiceDelegate {
 
         if let group {
             txt["group"] = Data(group.utf8)
+        }
+
+        if let controlPort {
+            txt["controlPort"] = Data(String(controlPort).utf8)
         }
 
         service.setTXTRecord(NetService.data(fromTXTRecord: txt))
@@ -114,6 +122,7 @@ public final class AudioMeshServiceBrowser: NSObject, NetServiceBrowserDelegate,
         let group = txt.stringValue(for: "group")
         let sampleRate = txt.intValue(for: "sampleRate") ?? AudioMeshFormat().sampleRate
         let channels = txt.intValue(for: "channels") ?? AudioMeshFormat().channels
+        let controlPort = txt.intValue(for: "controlPort").flatMap(UInt16.init)
 
         let service = AudioMeshService(
             name: sender.name,
@@ -122,7 +131,8 @@ public final class AudioMeshServiceBrowser: NSObject, NetServiceBrowserDelegate,
             transport: transport,
             group: group,
             sampleRate: sampleRate,
-            channels: channels
+            channels: channels,
+            controlPort: controlPort
         )
 
         if !resolved.contains(service) {
