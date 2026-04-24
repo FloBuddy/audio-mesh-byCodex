@@ -13,10 +13,27 @@ public final class UDPSender {
     private let fileDescriptor: Int32
     private var address: sockaddr_in
 
-    public init(host: String, port: UInt16) throws {
+    public init(host: String, port: UInt16, multicastTTL: Int32? = nil) throws {
         fileDescriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         guard fileDescriptor >= 0 else {
             throw UDPSocketError.createFailed(errno: errno)
+        }
+
+        if let multicastTTL {
+            var ttl = multicastTTL
+            setsockopt(fileDescriptor, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, socklen_t(MemoryLayout<Int32>.size))
+
+            var loopback: UInt8 = 1
+            setsockopt(fileDescriptor, IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, socklen_t(MemoryLayout<UInt8>.size))
+
+            var multicastInterface = in_addr(s_addr: INADDR_ANY)
+            setsockopt(
+                fileDescriptor,
+                IPPROTO_IP,
+                IP_MULTICAST_IF,
+                &multicastInterface,
+                socklen_t(MemoryLayout<in_addr>.size)
+            )
         }
 
         var resolved = in_addr()
@@ -64,7 +81,7 @@ public final class UDPReceiver {
     private let fileDescriptor: Int32
     private let maxPacketSize: Int
 
-    public init(port: UInt16, maxPacketSize: Int = 65_535) throws {
+    public init(port: UInt16, maxPacketSize: Int = 65_535, multicastGroup: String? = nil) throws {
         self.maxPacketSize = maxPacketSize
         fileDescriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         guard fileDescriptor >= 0 else {
@@ -73,6 +90,7 @@ public final class UDPReceiver {
 
         var reuse: Int32 = 1
         setsockopt(fileDescriptor, SOL_SOCKET, SO_REUSEADDR, &reuse, socklen_t(MemoryLayout<Int32>.size))
+        setsockopt(fileDescriptor, SOL_SOCKET, SO_REUSEPORT, &reuse, socklen_t(MemoryLayout<Int32>.size))
 
         var address = sockaddr_in(
             sin_len: UInt8(MemoryLayout<sockaddr_in>.size),
@@ -92,6 +110,32 @@ public final class UDPReceiver {
             close(fileDescriptor)
             throw UDPSocketError.bindFailed(errno: errno)
         }
+
+        if let multicastGroup {
+            var groupAddress = in_addr()
+            guard inet_pton(AF_INET, multicastGroup, &groupAddress) == 1 else {
+                close(fileDescriptor)
+                throw UDPSocketError.invalidHost(multicastGroup)
+            }
+
+            var membership = ip_mreq(
+                imr_multiaddr: groupAddress,
+                imr_interface: in_addr(s_addr: INADDR_ANY)
+            )
+
+            let membershipResult = setsockopt(
+                fileDescriptor,
+                IPPROTO_IP,
+                IP_ADD_MEMBERSHIP,
+                &membership,
+                socklen_t(MemoryLayout<ip_mreq>.size)
+            )
+
+            guard membershipResult == 0 else {
+                close(fileDescriptor)
+                throw UDPSocketError.bindFailed(errno: errno)
+            }
+        }
     }
 
     deinit {
@@ -107,4 +151,3 @@ public final class UDPReceiver {
         return Data(buffer.prefix(count))
     }
 }
-

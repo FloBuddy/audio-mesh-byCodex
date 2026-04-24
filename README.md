@@ -17,6 +17,7 @@ The first MVP starts with Apple products because they are the devices available 
 The first implementation is a Swift Package with:
 
 - `AudioMeshCore`: packet format, 48 kHz stereo audio format, UDP transport, sine test source, and jitter buffer.
+- Bonjour/mDNS service advertising and discovery for `_audiomesh._udp.` streams.
 - `audiomesh-source`: sends a test tone as RTP-style UDP packets.
 - `audiomesh-receiver`: receives packets, jitter-buffers them, and plays audio with AVAudioEngine.
 
@@ -39,6 +40,22 @@ For packet/transport testing without speaker output:
 ```sh
 .build/debug/audiomesh-receiver --no-audio --port 5004
 ```
+
+Advertise and discover a stream:
+
+```sh
+.build/debug/audiomesh-source --advertise --name "Studio Mac" --host 127.0.0.1 --port 5004
+.build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio
+```
+
+Experimental multicast mode:
+
+```sh
+.build/debug/audiomesh-source --multicast --name "Studio Mac"
+.build/debug/audiomesh-receiver --discover
+```
+
+Bonjour discovery is working. Multicast packet delivery still needs more real-network testing; unicast remains the reliable audio path for local development.
 
 ## MVP Focus
 

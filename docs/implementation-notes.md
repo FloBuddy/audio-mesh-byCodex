@@ -7,6 +7,7 @@ The repo now contains a runnable Swift Package prototype. It does not yet captur
 - Audio format: 48 kHz, stereo, Float32 PCM.
 - Packetization: RTP-style 12-byte header with dynamic payload type `96`.
 - Transport: UDP unicast.
+- Discovery: Bonjour/mDNS service advertising and discovery using `_audiomesh._udp.`.
 - Source: generated sine wave test tone.
 - Receiver: UDP receive loop, jitter buffer, AVAudioEngine playback.
 
@@ -46,12 +47,32 @@ Run receiver without playback:
 .build/debug/audiomesh-receiver --no-audio --port 5004
 ```
 
+Advertise source:
+
+```sh
+.build/debug/audiomesh-source --advertise --name "Studio Mac" --host 127.0.0.1 --port 5004
+```
+
+Discover sources:
+
+```sh
+.build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio
+```
+
+Experimental multicast discovery and receive:
+
+```sh
+.build/debug/audiomesh-source --multicast --name "Studio Mac"
+.build/debug/audiomesh-receiver --discover
+```
+
+Bonjour discovery has been verified locally. Multicast packet delivery did not complete in the local sandbox, so the next practical step is a source control endpoint that lets a discovered receiver request unicast streaming to its own IP/port.
+
 ## Near-Term Engineering Steps
 
-1. Add Bonjour/mDNS advertising and discovery.
+1. Add a simple control endpoint so receivers can request unicast streaming after discovery.
 2. Replace test tone source with macOS audio capture prototype.
 3. Add Opus encode/decode behind a codec abstraction.
 4. Add packet loss, jitter, and latency metrics.
 5. Add an iOS receiver target that reuses the same protocol types.
 6. Start the macOS virtual output device spike.
-

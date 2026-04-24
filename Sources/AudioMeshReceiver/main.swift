@@ -6,6 +6,9 @@ struct ReceiverOptions {
     var port: UInt16 = 5004
     var prebufferPackets = 8
     var playAudio = true
+    var discover = false
+    var discoveryTimeout: TimeInterval = 3
+    var multicastGroup: String?
 }
 
 func parseOptions() -> ReceiverOptions {
@@ -24,9 +27,20 @@ func parseOptions() -> ReceiverOptions {
             }
         case "--no-audio":
             options.playAudio = false
+        case "--discover":
+            options.discover = true
+        case "--discovery-timeout":
+            if let value = iterator.next(), let timeout = Double(value) {
+                options.discoveryTimeout = timeout
+            }
+        case "--group":
+            if let value = iterator.next() {
+                options.multicastGroup = value
+            }
         case "--help", "-h":
             print("""
             Usage: audiomesh-receiver [--port 5004] [--prebuffer 8] [--no-audio]
+                                      [--discover] [--discovery-timeout 3] [--group 239.255.42.99]
 
             Receives Audio Mesh RTP-style UDP packets and plays 48 kHz stereo Float32 audio.
             """)
@@ -94,14 +108,44 @@ final class AudioPlayer {
 
 let options = parseOptions()
 let meshFormat = AudioMeshFormat()
-let receiver = try UDPReceiver(port: options.port)
+var listenPort = options.port
+var multicastGroup = options.multicastGroup
+
+if options.discover {
+    print("Searching for Audio Mesh sources...")
+    let services = AudioMeshServiceBrowser().discover(timeout: options.discoveryTimeout)
+
+    if services.isEmpty {
+        print("No Audio Mesh sources found. Falling back to UDP port \(listenPort).")
+    } else {
+        print("Found Audio Mesh sources:")
+        for service in services {
+            let groupDescription = service.group.map { " group=\($0)" } ?? ""
+            print("- \(service.name) transport=\(service.transport) port=\(service.port)\(groupDescription)")
+        }
+
+        if let selected = services.first {
+            listenPort = selected.port
+            if selected.transport == "multicast" {
+                multicastGroup = selected.group
+            }
+            print("Using source \"\(selected.name)\"")
+        }
+    }
+}
+
+let receiver = try UDPReceiver(port: listenPort, multicastGroup: multicastGroup)
 let audioPlayer = options.playAudio ? try AudioPlayer(meshFormat: meshFormat) : nil
 var jitterBuffer = JitterBuffer(prebufferPacketCount: options.prebufferPackets)
 var received = 0
 var scheduled = 0
 let started = Date()
 
-print("Audio Mesh receiver listening on UDP port \(options.port)")
+if let multicastGroup {
+    print("Audio Mesh receiver listening on UDP port \(listenPort), multicast group \(multicastGroup)")
+} else {
+    print("Audio Mesh receiver listening on UDP port \(listenPort)")
+}
 
 while true {
     let data = try receiver.receive()
@@ -125,4 +169,3 @@ while true {
         print("dropped packet: \(error)")
     }
 }
-
