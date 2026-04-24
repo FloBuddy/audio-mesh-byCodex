@@ -12,7 +12,7 @@ The repo now contains a runnable Swift Package prototype. It does not yet instal
 - Control: tiny TCP `START <udp-port>` request so a receiver can ask a discovered source to stream back by unicast.
 - Source: generated sine wave test tone or ScreenCaptureKit system-audio capture.
 - Receiver: UDP receive loop, jitter buffer, AVAudioEngine playback.
-- Diagnostics: packet sequence metrics, invalid packet count, jitter skip count, queue depth, and packet rate.
+- Diagnostics: packet sequence metrics, invalid packet count, jitter skip count, queue depth, RTP interarrival jitter, and packet rate.
 
 ## Why Start Here
 
@@ -96,7 +96,7 @@ Bonjour discovery and receiver-requested unicast have been verified locally. Mul
 
 ## Near-Term Engineering Steps
 
-1. Improve packet loss, jitter, and latency metrics.
+1. Add latency and playout-buffer depth metrics.
 2. Add an iOS receiver target that reuses the same protocol types.
 3. Start the macOS virtual output device spike.
 4. Add packaging notes for the Homebrew/system `libopus` dependency.

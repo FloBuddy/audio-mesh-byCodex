@@ -187,6 +187,7 @@ let decoder = try AudioMeshCodecFactory.makeDecoder(codecID: codecID, format: me
 let expectedEncodedPayloadByteCount = codecID == .pcmFloat32 ? meshFormat.payloadByteCount : nil
 var jitterBuffer = JitterBuffer(prebufferPacketCount: options.prebufferPackets)
 var sequenceMetrics = PacketSequenceMetrics()
+var rtpJitterEstimator = RTPJitterEstimator()
 var scheduled = 0
 var invalidPackets = 0
 let started = Date()
@@ -211,8 +212,10 @@ while true {
     }
 
     do {
+        let arrivalTime = Date().timeIntervalSince(started)
         let packet = try AudioMeshPacket.decode(data, expectedPayloadBytes: expectedEncodedPayloadByteCount)
         sequenceMetrics.observe(sequenceNumber: packet.sequenceNumber)
+        rtpJitterEstimator.observe(packet: packet, arrivalTime: arrivalTime, sampleRate: meshFormat.sampleRate)
         jitterBuffer.push(packet)
 
         while let ready = jitterBuffer.popReady() {
@@ -227,6 +230,7 @@ while true {
                 scheduled: scheduled,
                 invalidPackets: invalidPackets,
                 jitterBuffer: jitterBuffer,
+                rtpJitterEstimator: rtpJitterEstimator,
                 started: started
             )
         }
@@ -241,6 +245,7 @@ printStats(
     scheduled: scheduled,
     invalidPackets: invalidPackets,
     jitterBuffer: jitterBuffer,
+    rtpJitterEstimator: rtpJitterEstimator,
     started: started
 )
 
@@ -249,6 +254,7 @@ private func printStats(
     scheduled: Int,
     invalidPackets: Int,
     jitterBuffer: JitterBuffer,
+    rtpJitterEstimator: RTPJitterEstimator,
     started: Date
 ) {
     let elapsed = Date().timeIntervalSince(started)
@@ -261,6 +267,7 @@ private func printStats(
         "invalid=\(invalidPackets) " +
         "skipped=\(jitterBuffer.skippedPacketCount) " +
         "queued=\(jitterBuffer.queuedPacketCount) " +
+        "rtp_jitter_ms=\(String(format: "%.2f", rtpJitterEstimator.jitterMilliseconds)) " +
         "packets_per_second=\(String(format: "%.1f", rate))"
     )
 }
