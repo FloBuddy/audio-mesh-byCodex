@@ -9,13 +9,40 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationStack {
+            List {
+                Section("Prototype Status") {
+                    Label("SwiftPM core merged into this Xcode project folder", systemImage: "checkmark.circle.fill")
+                    Label("UDP packet stream and jitter buffer implemented", systemImage: "network")
+                    Label("Receiver playback uses AVAudioEngine on macOS", systemImage: "speaker.wave.2.fill")
+                }
+
+                Section("Local Test") {
+                    commandBlock("swift build")
+                    commandBlock(".build/debug/audiomesh-receiver --port 5004")
+                    commandBlock(".build/debug/audiomesh-source --host 127.0.0.1 --port 5004 --seconds 10")
+                }
+
+                Section("No-Audio Smoke Test") {
+                    commandBlock(".build/debug/audiomesh-receiver --no-audio --port 5004")
+                }
+
+                Section("Next Implementation Steps") {
+                    Label("Bonjour discovery", systemImage: "dot.radiowaves.left.and.right")
+                    Label("macOS audio capture prototype", systemImage: "waveform")
+                    Label("Opus codec integration", systemImage: "slider.horizontal.3")
+                    Label("iOS receiver target", systemImage: "iphone")
+                }
+            }
+            .navigationTitle("Audio Mesh")
         }
-        .padding()
+    }
+
+    private func commandBlock(_ command: String) -> some View {
+        Text(command)
+            .font(.system(.callout, design: .monospaced))
+            .textSelection(.enabled)
+            .padding(.vertical, 4)
     }
 }
 
