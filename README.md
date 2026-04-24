@@ -70,7 +70,7 @@ Experimental multicast mode:
 
 Bonjour discovery and receiver-requested unicast are working. Multicast packet delivery still needs more real-network testing; unicast is the reliable audio path for local development.
 
-Receiver diagnostics include received, scheduled, missing, reordered/duplicate, invalid, skipped, queued, RTP jitter in milliseconds, and packets-per-second counters.
+Receiver diagnostics include received, scheduled, missing, reordered/duplicate, invalid, skipped, queued, buffered audio in milliseconds, RTP jitter in milliseconds, and packets-per-second counters.
 
 Supported codecs:
 

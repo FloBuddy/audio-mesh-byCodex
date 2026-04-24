@@ -18,6 +18,16 @@ final class JitterBufferTests: XCTestCase {
         XCTAssertNil(buffer.popReady())
     }
 
+    func testReportsQueuedDuration() {
+        let format = AudioMeshFormat()
+        var buffer = JitterBuffer(prebufferPacketCount: 3)
+
+        buffer.push(packet(sequence: 1))
+        buffer.push(packet(sequence: 2))
+
+        XCTAssertEqual(buffer.queuedDurationMilliseconds(format: format), 40, accuracy: 0.001)
+    }
+
     private func packet(sequence: UInt16) -> AudioMeshPacket {
         AudioMeshPacket(
             sequenceNumber: sequence,
@@ -27,4 +37,3 @@ final class JitterBufferTests: XCTestCase {
         )
     }
 }
-

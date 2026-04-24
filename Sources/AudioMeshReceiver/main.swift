@@ -231,6 +231,7 @@ while true {
                 invalidPackets: invalidPackets,
                 jitterBuffer: jitterBuffer,
                 rtpJitterEstimator: rtpJitterEstimator,
+                meshFormat: meshFormat,
                 started: started
             )
         }
@@ -246,6 +247,7 @@ printStats(
     invalidPackets: invalidPackets,
     jitterBuffer: jitterBuffer,
     rtpJitterEstimator: rtpJitterEstimator,
+    meshFormat: meshFormat,
     started: started
 )
 
@@ -255,6 +257,7 @@ private func printStats(
     invalidPackets: Int,
     jitterBuffer: JitterBuffer,
     rtpJitterEstimator: RTPJitterEstimator,
+    meshFormat: AudioMeshFormat,
     started: Date
 ) {
     let elapsed = Date().timeIntervalSince(started)
@@ -267,6 +270,7 @@ private func printStats(
         "invalid=\(invalidPackets) " +
         "skipped=\(jitterBuffer.skippedPacketCount) " +
         "queued=\(jitterBuffer.queuedPacketCount) " +
+        "buffer_ms=\(String(format: "%.1f", jitterBuffer.queuedDurationMilliseconds(format: meshFormat))) " +
         "rtp_jitter_ms=\(String(format: "%.2f", rtpJitterEstimator.jitterMilliseconds)) " +
         "packets_per_second=\(String(format: "%.1f", rate))"
     )

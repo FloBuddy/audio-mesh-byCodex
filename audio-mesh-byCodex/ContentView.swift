@@ -14,7 +14,7 @@ struct ContentView: View {
                 Section("Prototype Status") {
                     Label("SwiftPM core merged into this Xcode project folder", systemImage: "checkmark.circle.fill")
                     Label("UDP packet stream and jitter buffer implemented", systemImage: "network")
-                    Label("Receiver diagnostics include RTP jitter", systemImage: "chart.line.uptrend.xyaxis")
+                    Label("Receiver diagnostics include buffer depth and RTP jitter", systemImage: "chart.line.uptrend.xyaxis")
                     Label("Receiver playback uses AVAudioEngine on macOS", systemImage: "speaker.wave.2.fill")
                 }
 
@@ -44,7 +44,7 @@ struct ContentView: View {
                 }
 
                 Section("Next Implementation Steps") {
-                    Label("Latency and buffer-depth metrics", systemImage: "chart.line.uptrend.xyaxis")
+                    Label("End-to-end latency measurement", systemImage: "chart.line.uptrend.xyaxis")
                     Label("iOS receiver target", systemImage: "iphone")
                     Label("Virtual output device spike", systemImage: "speaker.wave.3")
                     Label("Packaging for libopus dependency", systemImage: "shippingbox")

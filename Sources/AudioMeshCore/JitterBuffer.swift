@@ -14,6 +14,10 @@ public struct JitterBuffer {
         packets.count
     }
 
+    public func queuedDurationMilliseconds(format: AudioMeshFormat) -> Double {
+        Double(queuedPacketCount) * format.packetDurationSeconds * 1_000
+    }
+
     public mutating func push(_ packet: AudioMeshPacket) {
         packets[packet.sequenceNumber] = packet
         if expectedSequenceNumber == nil, packets.count >= prebufferPacketCount {
