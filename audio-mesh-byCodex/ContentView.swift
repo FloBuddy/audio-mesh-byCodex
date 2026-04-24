@@ -39,6 +39,12 @@ struct ContentView: View {
                         }
                         .pickerStyle(.segmented)
 
+                        Picker("Source audio", selection: $runner.sourceAudioMode) {
+                            Text("Tone").tag(SourceAudioMode.tone)
+                            Text("System Audio").tag(SourceAudioMode.systemAudio)
+                        }
+                        .pickerStyle(.segmented)
+
                         Toggle("Play receiver audio on this Mac", isOn: $runner.playReceiverAudio)
 
                         HStack {
@@ -107,6 +113,11 @@ enum AudioMeshCodec: String, CaseIterable {
     case pcmFloat32 = "pcm-f32"
 }
 
+enum SourceAudioMode: String, CaseIterable {
+    case tone
+    case systemAudio
+}
+
 enum LocalProcessState: Equatable {
     case idle
     case running
@@ -157,6 +168,7 @@ enum LocalProcessState: Equatable {
 final class LocalAudioMeshRunner: ObservableObject {
     @Published var projectPath = LocalProjectLocator.defaultProjectPath
     @Published var codec = AudioMeshCodec.opus
+    @Published var sourceAudioMode = SourceAudioMode.tone
     @Published var playReceiverAudio = true
     @Published var buildState = LocalProcessState.idle
     @Published var sourceState = LocalProcessState.idle
@@ -187,17 +199,22 @@ final class LocalAudioMeshRunner: ObservableObject {
     }
 
     func startAdvertisedSource() {
+        var arguments = [
+            "--advertise",
+            "--name", Host.current().localizedName ?? "Audio Mesh Mac",
+            "--port", "5004",
+            "--control-port", "5005",
+            "--codec", codec.rawValue
+        ]
+        if sourceAudioMode == .systemAudio {
+            arguments.append("--screen-audio")
+        }
+
         sourceState = .running
         run(
             name: "source",
             executable: cliPath("audiomesh-source"),
-            arguments: [
-                "--advertise",
-                "--name", Host.current().localizedName ?? "Audio Mesh Mac",
-                "--port", "5004",
-                "--control-port", "5005",
-                "--codec", codec.rawValue
-            ],
+            arguments: arguments,
             store: { self.sourceProcess = $0 },
             updateState: { self.sourceState = $0 }
         )

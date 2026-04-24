@@ -21,7 +21,7 @@ The first implementation is a Swift Package plus a macOS local testing app:
 - Codec abstraction with `pcm-f32` passthrough and `opus` implemented.
 - `audiomesh-source`: sends a test tone as RTP-style UDP packets.
 - `audiomesh-receiver`: receives packets, jitter-buffers them, and plays audio with AVAudioEngine.
-- `audio-mesh-byCodex`: macOS control panel for building the CLI tools, starting an advertised source, starting a discovering receiver, and watching logs.
+- `audio-mesh-byCodex`: macOS control panel for building the CLI tools, starting an advertised tone or system-audio source, starting a discovering receiver, and watching logs.
 
 Build and test:
 
@@ -37,7 +37,7 @@ Run the macOS control panel from Xcode:
 xcodebuild -project audio-mesh-byCodex.xcodeproj -scheme audio-mesh-byCodex -destination platform=macOS build
 ```
 
-The app is intentionally unsandboxed for local MVP testing because it launches `.build/debug/audiomesh-source` and `.build/debug/audiomesh-receiver` from the project folder. Use the app to build the CLI tools, start a source on one Mac, and start a receiver on another Mac on the same LAN.
+The app is intentionally unsandboxed for local MVP testing because it launches `.build/debug/audiomesh-source` and `.build/debug/audiomesh-receiver` from the project folder. Use the app to build the CLI tools, start a tone or system-audio source on one Mac, and start a receiver on another Mac on the same LAN.
 
 Run a local loopback smoke test:
 

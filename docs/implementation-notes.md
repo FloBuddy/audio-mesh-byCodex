@@ -13,7 +13,7 @@ The repo now contains a runnable Swift Package prototype. It does not yet instal
 - Source: generated sine wave test tone or ScreenCaptureKit system-audio capture.
 - Receiver: UDP receive loop, jitter buffer, AVAudioEngine playback.
 - Diagnostics: packet sequence metrics, invalid packet count, jitter skip count, queue depth, buffered audio duration, RTP interarrival jitter, and packet rate.
-- macOS control panel: local Xcode app that builds the CLI tools, launches source/receiver processes, and streams their logs for real LAN testing.
+- macOS control panel: local Xcode app that builds the CLI tools, launches tone or system-audio source and receiver processes, and streams their logs for real LAN testing.
 
 ## Why Start Here
 
@@ -40,7 +40,7 @@ Build the macOS control panel:
 xcodebuild -project audio-mesh-byCodex.xcodeproj -scheme audio-mesh-byCodex -destination platform=macOS build
 ```
 
-For real MVP testing, run the app from Xcode, press `Build CLI Tools`, then start an advertised source on one Mac and a discovering receiver on another Mac. The app is intentionally unsandboxed during this phase so it can launch the local SwiftPM executables from `.build/debug`.
+For real MVP testing, run the app from Xcode, press `Build CLI Tools`, then start an advertised tone or system-audio source on one Mac and a discovering receiver on another Mac. The app is intentionally unsandboxed during this phase so it can launch the local SwiftPM executables from `.build/debug`.
 
 Run receiver:
 
