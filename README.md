@@ -14,13 +14,14 @@ The first MVP starts with Apple products because they are the devices available 
 
 ## Current Prototype
 
-The first implementation is a Swift Package with:
+The first implementation is a Swift Package plus a macOS local testing app:
 
 - `AudioMeshCore`: packet format, 48 kHz stereo audio format, UDP transport, sine test source, and jitter buffer.
 - Bonjour/mDNS service advertising and discovery for `_audiomesh._udp.` streams.
 - Codec abstraction with `pcm-f32` passthrough and `opus` implemented.
 - `audiomesh-source`: sends a test tone as RTP-style UDP packets.
 - `audiomesh-receiver`: receives packets, jitter-buffers them, and plays audio with AVAudioEngine.
+- `audio-mesh-byCodex`: macOS control panel for building the CLI tools, starting an advertised source, starting a discovering receiver, and watching logs.
 
 Build and test:
 
@@ -29,6 +30,14 @@ brew install opus
 swift build
 swift test
 ```
+
+Run the macOS control panel from Xcode:
+
+```sh
+xcodebuild -project audio-mesh-byCodex.xcodeproj -scheme audio-mesh-byCodex -destination platform=macOS build
+```
+
+The app is intentionally unsandboxed for local MVP testing because it launches `.build/debug/audiomesh-source` and `.build/debug/audiomesh-receiver` from the project folder. Use the app to build the CLI tools, start a source on one Mac, and start a receiver on another Mac on the same LAN.
 
 Run a local loopback smoke test:
 
