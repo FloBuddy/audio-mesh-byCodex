@@ -9,6 +9,8 @@ struct ReceiverOptions {
     var discover = false
     var discoveryTimeout: TimeInterval = 3
     var multicastGroup: String?
+    var seconds: Double?
+    var statsInterval = 100
 }
 
 func parseOptions() -> ReceiverOptions {
@@ -37,10 +39,19 @@ func parseOptions() -> ReceiverOptions {
             if let value = iterator.next() {
                 options.multicastGroup = value
             }
+        case "--seconds":
+            if let value = iterator.next(), let seconds = Double(value) {
+                options.seconds = seconds
+            }
+        case "--stats-interval":
+            if let value = iterator.next(), let interval = Int(value) {
+                options.statsInterval = max(1, interval)
+            }
         case "--help", "-h":
             print("""
             Usage: audiomesh-receiver [--port 5004] [--prebuffer 8] [--no-audio]
                                       [--discover] [--discovery-timeout 3] [--group 239.255.42.99]
+                                      [--seconds 10] [--stats-interval 100]
 
             Receives Audio Mesh RTP-style UDP packets and plays 48 kHz stereo Float32 audio.
             """)
@@ -136,7 +147,11 @@ if options.discover {
     }
 }
 
-let receiver = try UDPReceiver(port: listenPort, multicastGroup: multicastGroup)
+let receiver = try UDPReceiver(
+    port: listenPort,
+    multicastGroup: multicastGroup,
+    receiveTimeout: options.seconds == nil ? nil : 0.25
+)
 
 if let selectedService,
    selectedService.transport == "unicast",
@@ -156,8 +171,9 @@ if let selectedService,
 
 let audioPlayer = options.playAudio ? try AudioPlayer(meshFormat: meshFormat) : nil
 var jitterBuffer = JitterBuffer(prebufferPacketCount: options.prebufferPackets)
-var received = 0
+var sequenceMetrics = PacketSequenceMetrics()
 var scheduled = 0
+var invalidPackets = 0
 let started = Date()
 
 if let multicastGroup {
@@ -167,11 +183,20 @@ if let multicastGroup {
 }
 
 while true {
-    let data = try receiver.receive()
+    if let seconds = options.seconds, Date().timeIntervalSince(started) >= seconds {
+        break
+    }
+
+    let data: Data
+    do {
+        data = try receiver.receive()
+    } catch UDPSocketError.receiveTimedOut {
+        continue
+    }
 
     do {
         let packet = try AudioMeshPacket.decode(data, expectedPayloadBytes: meshFormat.payloadByteCount)
-        received += 1
+        sequenceMetrics.observe(sequenceNumber: packet.sequenceNumber)
         jitterBuffer.push(packet)
 
         while let ready = jitterBuffer.popReady() {
@@ -179,12 +204,46 @@ while true {
             audioPlayer?.schedule(payload: ready.payload, meshFormat: meshFormat)
         }
 
-        if received % 100 == 0 {
-            let elapsed = Date().timeIntervalSince(started)
-            let rate = Double(received) / max(elapsed, 0.001)
-            print("received=\(received) scheduled=\(scheduled) packets_per_second=\(String(format: "%.1f", rate))")
+        if sequenceMetrics.receivedPacketCount % options.statsInterval == 0 {
+            printStats(
+                metrics: sequenceMetrics,
+                scheduled: scheduled,
+                invalidPackets: invalidPackets,
+                jitterBuffer: jitterBuffer,
+                started: started
+            )
         }
     } catch {
+        invalidPackets += 1
         print("dropped packet: \(error)")
     }
+}
+
+printStats(
+    metrics: sequenceMetrics,
+    scheduled: scheduled,
+    invalidPackets: invalidPackets,
+    jitterBuffer: jitterBuffer,
+    started: started
+)
+
+private func printStats(
+    metrics: PacketSequenceMetrics,
+    scheduled: Int,
+    invalidPackets: Int,
+    jitterBuffer: JitterBuffer,
+    started: Date
+) {
+    let elapsed = Date().timeIntervalSince(started)
+    let rate = Double(metrics.receivedPacketCount) / max(elapsed, 0.001)
+    print(
+        "received=\(metrics.receivedPacketCount) " +
+        "scheduled=\(scheduled) " +
+        "missing=\(metrics.missingPacketCount) " +
+        "reordered_or_duplicate=\(metrics.reorderedOrDuplicatePacketCount) " +
+        "invalid=\(invalidPackets) " +
+        "skipped=\(jitterBuffer.skippedPacketCount) " +
+        "queued=\(jitterBuffer.queuedPacketCount) " +
+        "packets_per_second=\(String(format: "%.1f", rate))"
+    )
 }

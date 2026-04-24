@@ -11,6 +11,7 @@ The repo now contains a runnable Swift Package prototype. It does not yet captur
 - Control: tiny TCP `START <udp-port>` request so a receiver can ask a discovered source to stream back by unicast.
 - Source: generated sine wave test tone or ScreenCaptureKit system-audio capture.
 - Receiver: UDP receive loop, jitter buffer, AVAudioEngine playback.
+- Diagnostics: packet sequence metrics, invalid packet count, jitter skip count, queue depth, and packet rate.
 
 ## Why Start Here
 
@@ -45,7 +46,7 @@ Run source:
 Run receiver without playback:
 
 ```sh
-.build/debug/audiomesh-receiver --no-audio --port 5004
+.build/debug/audiomesh-receiver --no-audio --port 5004 --seconds 10 --stats-interval 50
 ```
 
 Advertise source:
@@ -58,6 +59,12 @@ Discover sources:
 
 ```sh
 .build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio
+```
+
+Print stream diagnostics more often:
+
+```sh
+.build/debug/audiomesh-receiver --discover --no-audio --seconds 10 --stats-interval 50
 ```
 
 Capture macOS system audio:

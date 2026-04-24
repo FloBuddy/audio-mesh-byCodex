@@ -25,7 +25,7 @@ struct ContentView: View {
 
                 Section("Discovery Test") {
                     commandBlock(".build/debug/audiomesh-source --advertise --name \"Studio Mac\" --port 5004 --control-port 5005")
-                    commandBlock(".build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio")
+                    commandBlock(".build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio --seconds 10 --stats-interval 50")
                 }
 
                 Section("System Audio Capture") {

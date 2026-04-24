@@ -4,9 +4,14 @@ public struct JitterBuffer {
     private var packets: [UInt16: AudioMeshPacket] = [:]
     private var expectedSequenceNumber: UInt16?
     private let prebufferPacketCount: Int
+    public private(set) var skippedPacketCount = 0
 
     public init(prebufferPacketCount: Int = 8) {
         self.prebufferPacketCount = prebufferPacketCount
+    }
+
+    public var queuedPacketCount: Int {
+        packets.count
     }
 
     public mutating func push(_ packet: AudioMeshPacket) {
@@ -27,6 +32,7 @@ public struct JitterBuffer {
         }
 
         if packets.count >= prebufferPacketCount * 2, let next = packets.keys.min() {
+            skippedPacketCount += Int(next &- expectedSequenceNumber)
             self.expectedSequenceNumber = next &+ 1
             return packets.removeValue(forKey: next)
         }
@@ -34,4 +40,3 @@ public struct JitterBuffer {
         return nil
     }
 }
-

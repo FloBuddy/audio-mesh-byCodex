@@ -5,6 +5,7 @@ public enum UDPSocketError: Error {
     case createFailed(errno: Int32)
     case bindFailed(errno: Int32)
     case sendFailed(errno: Int32)
+    case receiveTimedOut
     case receiveFailed(errno: Int32)
     case invalidHost(String)
 }
@@ -81,7 +82,12 @@ public final class UDPReceiver {
     private let fileDescriptor: Int32
     private let maxPacketSize: Int
 
-    public init(port: UInt16, maxPacketSize: Int = 65_535, multicastGroup: String? = nil) throws {
+    public init(
+        port: UInt16,
+        maxPacketSize: Int = 65_535,
+        multicastGroup: String? = nil,
+        receiveTimeout: TimeInterval? = nil
+    ) throws {
         self.maxPacketSize = maxPacketSize
         fileDescriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         guard fileDescriptor >= 0 else {
@@ -91,6 +97,20 @@ public final class UDPReceiver {
         var reuse: Int32 = 1
         setsockopt(fileDescriptor, SOL_SOCKET, SO_REUSEADDR, &reuse, socklen_t(MemoryLayout<Int32>.size))
         setsockopt(fileDescriptor, SOL_SOCKET, SO_REUSEPORT, &reuse, socklen_t(MemoryLayout<Int32>.size))
+
+        if let receiveTimeout {
+            var timeout = timeval(
+                tv_sec: Int(receiveTimeout),
+                tv_usec: Int32((receiveTimeout.truncatingRemainder(dividingBy: 1)) * 1_000_000)
+            )
+            setsockopt(
+                fileDescriptor,
+                SOL_SOCKET,
+                SO_RCVTIMEO,
+                &timeout,
+                socklen_t(MemoryLayout<timeval>.size)
+            )
+        }
 
         var address = sockaddr_in(
             sin_len: UInt8(MemoryLayout<sockaddr_in>.size),
@@ -146,6 +166,9 @@ public final class UDPReceiver {
         var buffer = [UInt8](repeating: 0, count: maxPacketSize)
         let count = Darwin.recv(fileDescriptor, &buffer, buffer.count, 0)
         guard count >= 0 else {
+            if errno == EAGAIN || errno == EWOULDBLOCK {
+                throw UDPSocketError.receiveTimedOut
+            }
             throw UDPSocketError.receiveFailed(errno: errno)
         }
         return Data(buffer.prefix(count))

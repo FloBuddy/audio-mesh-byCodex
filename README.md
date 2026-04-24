@@ -38,14 +38,14 @@ Run a local loopback smoke test:
 For packet/transport testing without speaker output:
 
 ```sh
-.build/debug/audiomesh-receiver --no-audio --port 5004
+.build/debug/audiomesh-receiver --no-audio --port 5004 --seconds 10 --stats-interval 50
 ```
 
 Advertise and discover a stream:
 
 ```sh
 .build/debug/audiomesh-source --advertise --name "Studio Mac" --port 5004 --control-port 5005
-.build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio
+.build/debug/audiomesh-receiver --discover --discovery-timeout 3 --no-audio --seconds 10 --stats-interval 50
 ```
 
 In this mode the receiver discovers the source, sends `START <udp-port>` to the source control port, and the source streams unicast UDP back to the receiver.
@@ -67,6 +67,8 @@ Experimental multicast mode:
 ```
 
 Bonjour discovery and receiver-requested unicast are working. Multicast packet delivery still needs more real-network testing; unicast is the reliable audio path for local development.
+
+Receiver diagnostics include received, scheduled, missing, reordered/duplicate, invalid, skipped, queued, and packets-per-second counters.
 
 ## MVP Focus
 
